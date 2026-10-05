@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector Search Algorithms — Εργασία</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-soft: #334155;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-2: #a78bfa;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --lsh: #60a5fa;
+  --hyp: #34d399;
+  --ivf: #fbbf24;
+  --pq:  #f87171;
+  --border: #334155;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* NAVBAR */
+nav {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0 1.5rem;
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo::before { content: "🔍"; font-size: 1.2rem; }
+
+.nav-links {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.nav-links a:hover { color: var(--text); background: var(--bg-soft); }
+.nav-links a.active { color: var(--bg); background: var(--accent); }
+
+/* MAIN */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.page { display: none; animation: fadeIn 0.4s ease; }
+.page.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 2rem 0 3rem;
+}
+
+.hero h1 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  color: var(--text-muted);
+  max-width: 720px;
+  margin: 0 auto 1.5rem;
+  font-size: 1.05rem;
+}
+
+.badges {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.badge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.badge.cpp { color: var(--lsh); border-color: var(--lsh); }
+.badge.python { color: var(--hyp); border-color: var(--hyp); }
+.badge.data { color: var(--ivf); border-color: var(--ivf); }
+
+/* CARDS */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  transition: all 0.25s;
+}
+
+.card:hover { transform: translateY(-3px); border-color: var(--accent); }
+
+.card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
+  color: var(--text);
+}
+
+.card p { color: var(--text-muted); font-size: 0.92rem; }
+
+.algorithm-card { cursor: pointer; position: relative; overflow: hidden; }
+.algorithm-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+.algorithm-card.lsh::before { background: var(--lsh); }
+.algorithm-card.hyp::before { background: var(--hyp); }
+.algorithm-card.ivf::before { background: var(--ivf); }
+.algorithm-card.pq::before  { background: var(--pq); }
+
+.algorithm-card h3 { display: flex; align-items: center; gap: 0.5rem; }
+.algorithm-card .tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.tag.lsh { background: rgba(96,165,250,0.15); color: var(--lsh); }
+.tag.hyp { background: rgba(52,211,153,0.15); color: var(--hyp); }
+.tag.ivf { background: rgba(251,191,36,0.15); color: var(--ivf); }
+.tag.pq  { background: rgba(248,113,113,0.15); color: var(--pq); }
+
+/* SECTIONS */
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.section h2 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+}
+
+.section h2 .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--bg);
+  flex-shrink: 0;
+}
+
+.section h3 {
+  font-size: 1rem;
+  margin: 1.2rem 0 0.6rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ALGORITHM HEADER */
+.alg-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.alg-header .icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.alg-header.lsh .icon { background: rgba(96,165,250,0.15); color: var(--lsh); }
+.alg-header.hyp .icon { background: rgba(52,211,153,0.15); color: var(--hyp); }
+.alg-header.ivf .icon { background: rgba(251,191,36,0.15); color: var(--ivf); }
+.alg-header.pq  .icon { background: rgba(248,113,113,0.15); color: var(--pq); }
+
+.alg-header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.alg-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+/* TABLES */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+th, td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--bg-soft);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(56, 189, 248, 0.04); }
+
+td code, p code, li code, .step code {
+  background: var(--bg-soft);
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.85em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+/* STEPS */
+.step-list {
+  list-style: none;
+  counter-reset: step;
+  padding-left: 0;
+}
+
+.step-list li {
+  counter-increment: step;
+  position: relative;
+  padding: 0.8rem 0 0.8rem 3rem;
+  border-left: 2px solid var(--border);
+  margin-left: 1rem;
+}
+
+.step-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: -1.05rem;
+  top: 0.8rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 3px solid var(--bg-card);
+}
+
+.step-list li:last-child { border-left-color: transparent; }
+
+.step-list li strong { color: var(--text); }
+.step-list li span { color: var(--text-muted); font-size: 0.92rem; display: block; margin-top: 0.15rem; }
+
+/* CODE BLOCK */
+pre {
+  background: #0a0f1e;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin: 0.75rem 0;
+}
+
+pre .kw { color: #c084fc; }
+pre .cm { color: #64748b; font-style: italic; }
+pre .str { color: #86efac; }
+pre .num { color: #fbbf24; }
+pre .fn { color: #60a5fa; }
+
+/* RESULT BOXES */
+.result-box {
+  background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(167,139,250,0.08));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin: 0.75rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* EXPERIMENT TABLES */
+.exp-table-wrap { overflow-x: auto; margin: 1rem 0; }
+.exp-table {
+  min-width: 700px;
+  background: var(--bg-soft);
+}
+
+.exp-table th { background: #0a0f1e; }
+
+/* BAR CHART (CSS) */
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  height: 220px;
+  padding: 1rem 0;
+  margin: 1rem 0;
+  border-bottom: 2px solid var(--border);
+}
+
+.chart-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  position: relative;
+}
+
+.chart-bar .bar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.chart-bar .bar:hover { filter: brightness(1.2); }
+.chart-bar .label {
+  position: absolute;
+  bottom: -28px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.chart-bar .value {
+  position: absolute;
+  top: -22px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bar.lsh { background: linear-gradient(180deg, var(--lsh), #3b82f6); }
+.bar.hyp { background: linear-gradient(180deg, var(--hyp), #10b981); }
+.bar.ivf { background: linear-gradient(180deg, var(--ivf), #f59e0b); }
+.bar.pq  { background: linear-gradient(180deg, var(--pq), #ef4444); }
+
+/* ALERT */
+.alert {
+  padding: 1rem 1.2rem;
+  border-radius: 10px;
+  margin: 0.75rem 0;
+  border-left: 4px solid;
+  font-size: 0.92rem;
+}
+
+.alert.info { background: rgba(56,189,248,0.08); border-color: var(--accent); }
+.alert.success { background: rgba(52,211,153,0.08); border-color: var(--success); }
+.alert.warn { background: rgba(251,191,36,0.08); border-color: var(--warn); }
+.alert.danger { background: rgba(248,113,113,0.08); border-color: var(--danger); }
+
+/* STATS GRID */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.stat {
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.stat .value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  display: block;
+  line-height: 1.2;
+}
+
+.stat .name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* FOOTER */
+footer {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 640px) {
+  .nav-inner { height: auto; padding: 0.75rem 0; }
+  .nav-links { width: 100%; justify-content: center; }
+  .nav-links a { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+  .section { padding: 1.25rem; }
+  .alg-header h1 { font-size: 1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo" onclick="go('home')">Vector Search</div>
+    <ul class="nav-links">
+      <li><a data-page="home" onclick="go('home')">Αρχική</a></li>
+      <li><a data-page="lsh" onclick="go('lsh')">LSH</a></li>
+      <li><a data-page="hypercube" onclick="go('hypercube')">Hypercube</a></li>
+      <li><a data-page="ivfflat" onclick="go('ivfflat')">IVFFlat</a></li>
+      <li><a data-page="ivfpq" onclick="go('ivfpq')">IVFPQ</a></li>
+      <li><a data-page="study" onclick="go('study')">Πειραματική Μελέτη</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+
+<!-- ==================== HOME ==================== -->
+<section class="page active" id="home">
+  <div class="hero">
+    <h1>Αναζήτηση Διανυσμάτων σε C/C++</h1>
+    <p>
+      Υλοποίηση και συγκριτική αξιολόγηση τεσσάρων αλγορίθμων 
+      <strong>Approximate Nearest Neighbor (ANN)</strong> αναζήτησης 
+      σε χώρους υψηλών διαστάσεων.
+    </p>
+    <div class="badges">
+      <span class="badge cpp">C++ (g++)</span>
+      <span class="badge python">Python 3</span>
+      <span class="badge data">MNIST · SIFT</span>
+      <span class="badge">Makefile</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📖 Σχετικά με την Εργασία</h2>
+    <p>
+      Η παρούσα εργασία αποτελεί την <strong>1η Προγραμματιστική Εργασία</strong> 
+      του μαθήματος <em>«Ανάπτυξη Λογισμικού για Αλγοριθμικά Προβλήματα»</em>. 
+      Υλοποιήθηκαν από το μηδέν τέσσερις αλγόριθμοι προσεγγιστικής αναζήτησης 
+      πλησιέστερων γειτόνων και αξιολογήθηκαν σε δύο πραγματικά datasets.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🎯 Στόχος</h3>
+        <p>Σύγκριση αλγορίθμων ANN ως προς <strong>ταχύτητα</strong>, 
+        <strong>ακρίβεια</strong> και <strong>ποιότητα προσέγγισης</strong>.</p>
+      </div>
+      <div class="card">
+        <h3>📊 Datasets</h3>
+        <p><strong>MNIST</strong> (784 διαστάσεις) και <strong>SIFT</strong> (128 διαστάσεις) — 
+        δύο από τα πιο γνωστά benchmarks.</p>
+      </div>
+      <div class="card">
+        <h3>⚙️ Μετρικές</h3>
+        <p><strong>Recall@N</strong>, <strong>QPS</strong> (Queries Per Second) 
+        και <strong>Approximation Factor (AF)</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🧠 Οι Αλγόριθμοι</h2>
+    <p style="color:var(--text-muted); margin-bottom:1rem;">
+      Πατήστε σε κάποιον αλγόριθμο για να δείτε αναλυτικά πώς υλοποιείται.
+    </p>
+    <div class="grid">
+      <div class="card algorithm-card lsh" onclick="go('lsh')">
+        <h3>LSH <span class="tag lsh">hash-based</span></h3>
+        <p>Locality Sensitive Hashing — πολλαπλοί πίνακες κατακερματισμού 
+        με τυχαίες προβολές.</p>
+      </div>
+      <div class="card algorithm-card hyp" onclick="go('hypercube')">
+        <h3>Hypercube <span class="tag hyp">projection</span></h3>
+        <p>Τυχαία προβολή σε υπερκύβο — δυαδικές κορυφές και 
+        Hamming distance traversal.</p>
+      </div>
+      <div class="card algorithm-card ivf" onclick="go('ivfflat')">
+        <h3>IVFFlat <span class="tag ivf">clustering</span></h3>
+        <p>Inverted File index με k-means clustering και 
+        ακριβή υπολογισμό αποστάσεων.</p>
+      </div>
+      <div class="card algorithm-card pq" onclick="go('ivfpq')">
+        <h3>IVFPQ <span class="tag pq">compression</span></h3>
+        <p>Inverted File + Product Quantization — συμπιεσμένη 
+        αναπαράσταση με Look-Up Tables.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🛠️ Τεχνολογίες</h2>
+    <div class="grid">
+      <div class="card"><h3>C++ (g++)</h3><p>Υλοποίηση αλγορίθμων, STL containers, templates.</p></div>
+      <div class="card"><h3>Python 3</h3><p>Ανάλυση αποτελεσμάτων με <code>pandas</code>, <code>matplotlib</code>, <code>seaborn</code>.</p></div>
+      <div class="card"><h3>Makefile</h3><p>Build system με targets για compile, run, analysis.</p></div>
+      <div class="card"><h3>Bash</h3><p>Automated experiment scripts για MNIST και SIFT.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== LSH ==================== -->
+<section class="page" id="lsh">
+  <div class="alg-header lsh">
+    <div class="icon">L</div>
+    <div>
+      <h1>LSH — Locality Sensitive Hashing</h1>
+      <p>Hash-based Approximate Nearest Neighbor search</p>
+    </div>
+  </div>
+
+  <!-- 1. INPUT -->
+  <div class="section">
+    <h2><span class="num">1</span> Input</h2>
+    <p>Ο LSH δέχεται το dataset, τα queries και τις παραμέτρους που ελέγχουν τη συμπεριφορά του.</p>
+
+    <table>
+      <thead>
+        <tr><th>Παράμετρος</th><th>Περιγραφή</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>-d</code></td><td>Dataset (MNIST: 60.000×784, SIFT: 70.000×128)</td><td>—</td></tr>
+        <tr><td><code>-q</code></td><td>Query vectors</td><td>—</td></tr>
+        <tr><td><code>-k</code></td><td>Αριθμός hash functions ανά πίνακα</td><td>10</td></tr>
+        <tr><td><code>-L</code></td><td>Αριθμός hash tables</td><td>30</td></tr>
+        <tr><td><code>-w</code></td><td>Πλάτος παραθύρου</td><td>1.5</td></tr>
+        <tr><td><code>-N</code></td><td>Αριθμός γειτόνων προς επιστροφή</td><td>5</td></tr>
+        <tr><td><code>-R</code></td><td>Ακτίνα range search</td><td>2000 (MNIST) / 2.0 (SIFT)</td></tr>
+        <tr><td><code>-type</code></td><td>"mnist" ή "sift"</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Βήματα φόρτωσης</h3>
+    <ol class="step-list">
+      <li><strong>Parse argv</strong><span>Ανάγνωση όλων των flags από τη γραμμή εντολών.</span></li>
+      <li><strong>Φόρτωση dataset</strong><span>Κλήση <code>return_mnist_data()</code> ή <code>return_sift_data()</code>.</span></li>
+      <li><strong>Φόρτωση queries</strong><span>Κλήση <code>return_mnist_queries()</code> ή <code>return_sift_queries()</code>.</span></li>
+      <li><strong>Μετατροπή float → double</strong><span>Όλοι οι αλγόριθμοι δουλεύουν με <code>vector&lt;vector&lt;double&gt;&gt;</code>.</span></li>
+    </ol>
+  </div>
+
+  <!-- 2. BUILD -->
+  <div class="section">
+    <h2><span class="num">2</span> Build Phase — Πώς χτίζεται το index</h2>
+
+    <ol class="step-list">
+      <li><strong>Initialize(dataset_n)</strong><span>Δημιουργία RNG με seed και κατανομών: <code>normal(0,1)</code>, <code>uniform(0,w)</code>, <code>uniform_int(1, M-1)</code>.</span></li>
+      <li><strong>Δημιουργία τυχαίων components</strong><span>Για κάθε table i = 0..L-1 και κάθε hash function j = 0..k-1: τυχαίο διάνυσμα <code>v[i][j]</code> (διάστασης dim), μετατόπιση <code>t[i][j]</code>, συντελεστής <code>r[i][j]</code>.</span></li>
+      <li><strong>Υπολογισμός tableSize</strong><span><code>tableSize = max(1, dataset_n / 4)</code> — 25% του dataset. Σταθερό <code>M = 4294967291</code> (πρώτος ~2³²-5).</span></li>
+      <li><strong>CreateHashTables(dataset)</strong><span>Για κάθε point j και κάθε table i: υπολογισμός hash value και εισαγωγή στο αντίστοιχο bucket.</span></li>
+      <li><strong>CreateHFun(point, tableIndex)</strong><span>Ο πυρήνας του LSH: υπολογισμός k partial hashes και συνδυασμός τους σε ένα ID.</span></li>
+    </ol>
+
+    <h3>Η hash function βήμα-βήμα</h3>
+    <pre><span class="cm">// Για κάθε μία από τις k hash functions:</span>
+dot_product = v[h] · point
+<span class="kw">if</span> (dot_product > INT_MAX || dot_product < INT_MIN) <span class="kw">exit</span>;
+numerator = dot_product + t[h]
+h_h = <span class="fn">floor</span>(numerator / w)
+
+<span class="cm">// Συνδυασμός σε ένα ID:</span>
+ID = <span class="num">0</span>
+<span class="kw">for</span> h = <span class="num">0</span>..k-<span class="num">1</span>:
+    hu = (h_h mod M + M) mod M       <span class="cm">// θετικό modulo</span>
+    ID = (ID + r[h] * hu mod M) mod M
+<span class="kw">return</span> ID mod tableSize</pre>
+
+    <div class="alert info">
+      <strong>Σημείωση:</strong> Το overflow check προστατεύει από ακραίες τιμές 
+      του εσωτερικού γινομένου, που θα προκαλούσαν undefined behavior.
+    </div>
+  </div>
+
+  <!-- 3. QUERY -->
+  <div class="section">
+    <h2><span class="num">3</span> Query Phase — Πώς βρίσκεις τους γείτονες</h2>
+
+    <h3>Προσεγγιστική αναζήτηση (ANN)</h3>
+    <ol class="step-list">
+      <li><strong>candidate_set = κενό</strong><span>Χρήση <code>unordered_set&lt;int&gt;</code> για αποφυγή διπλότυπων.</span></li>
+      <li><strong>Για κάθε table i = 0..L-1</strong><span>Υπολογισμός <code>query_hash = CreateHFun(q, i)</code>.</span></li>
+      <li><strong>Union των buckets</strong><span>Αν το bucket υπάρχει, insert όλα τα σημεία του στο candidate_set.</span></li>
+      <li><strong>Υπολογισμός αποστάσεων</strong><span>Για κάθε candidate: <code>euclidean_distance(q, dataset[c])</code>.</span></li>
+      <li><strong>Sort & Top-N</strong><span>Ταξινόμηση κατά αύξουσα απόσταση, διατήρηση N πρώτων.</span></li>
+    </ol>
+
+    <h3>Ακριβής αναζήτηση (ENN)</h3>
+    <p style="color:var(--text-muted);">Brute force σε όλο το dataset — υπολογισμός απόστασης από κάθε point, sort, resize(N).</p>
+  </div>
+
+  <!-- 4. METRICS -->
+  <div class="section">
+    <h2><span class="num">4</span> Μετρικές — AF, Recall, QPS</h2>
+
+    <h3>Average Factor (AF)</h3>
+    <pre>AF = aNN[<span class="num">0</span>].second / eNN[<span class="num">0</span>].second</pre>
+    <p style="color:var(--text-muted);">Λόγος της προσεγγιστικής απόστασης προς την ακριβή. Τιμή κοντά στο 1.0 = καλή προσέγγιση.</p>
+
+    <h3>Recall@N</h3>
+    <pre>recall_hits = <span class="num">0</span>
+<span class="kw">for</span> exact <span class="kw">in</span> eNN:
+    <span class="kw">for</span> approx <span class="kw">in</span> aNN:
+        <span class="kw">if</span> exact.id == approx.id:
+            recall_hits++
+            <span class="kw">break</span>
+recall = recall_hits / eNN.size()</pre>
+
+    <h3>QPS (Queries Per Second)</h3>
+    <pre>start_all = chrono::high_resolution_clock::now()
+<span class="cm">// ... επεξεργασία όλων των queries ...</span>
+end_all = chrono::high_resolution_clock::now()
+total_time = duration&lt;<span class="kw">double</span>&gt;(end_all - start_all).count()
+qps = queries.size() / total_time</pre>
+
+    <h3>Τελικές μετρικές (μέσοι όροι)</h3>
+    <div class="result-box">Total Average AF        = total_Average_factor / valid_q
+Total Average Recall@N  = total_recall / valid_q
+QPS                     = queries.size() / total_time
+Average Approximate Time = total_atime / valid_q
+Average Exact Time       = total_etime / valid_q</div>
+  </div>
+
+  <!-- 5. OUTPUT -->
+  <div class="section">
+    <h2><span class="num">5</span> Output — Αρχείο .dat</h2>
+    <p>Για κάθε query γράφεται μία εγγραφή, και στο τέλος τα συνολικά στατιστικά.</p>
+
+    <div class="result-box">LSH
+
+Query: 0
+Nearest neighbor-1: 12345
+distanceApproximate: 0.456
+distanceTrue: 0.423
+Nearest neighbor-2: 23456
+distanceApproximate: 0.567
+distanceTrue: 0.534
+...
+Average AF: 1.078
+Recall@N: 0.8
+tApproximateAverage: 0.0012
+tTrueAverage: 0.0234
+-------------------
+Query: 1
+...
+
+FINAL METRICS:
+Total Average AF: 1.234
+Total Average Recall@N: 0.567
+QPS: 678.479
+Average Approximate Time: 0.00187
+Average Exact Time: 0.0320</div>
+
+    <h3>Παραδείγματα αρχείων</h3>
+    <p><code>sift_output/lsh_k4.dat</code>, <code>lsh_L30.dat</code>, <code>lsh_w1.5.dat</code></p>
+  </div>
+</section>
+
+<!-- ==================== HYPERCUBE ==================== -->
+<section class="page" id="hypercube">
+  <div class="alg-header hyp">
+    <div class="icon">H</div>
+    <div>
+      <h1>Hypercube — Random Projection</h1>
+      <p>Προβολή σε υπερκύβο με Hamming distance traversal</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">1</span> Input</h2>
+    <table>
+      <thead><tr><th>Παράμετρος</th><th>Περιγραφή</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td><code>-kproj</code></td><td>Bits του υπερκύβου (αν 0 → auto)</td><td>14</td></tr>
+        <tr><td><code>-M</code></td><td>Μέγιστος αριθμός υποψηφίων</td><td>10</td></tr>
+        <tr><td><code>-probes</code></td><td>Αριθμός κορυφών προς εξέταση</td><td>2</td></tr>
+        <tr><td><code>-w</code></td><td>Πλάτος παραθύρου</td><td>4.0</td></tr>
+        <tr><td><code>-N</code></td><td>Αριθμός γειτόνων</td><td>1</td></tr>
+        <tr><td><code>-R</code></td><td>Ακτίνα range search</td><td>2000 / 2.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">2</span> Build Phase</h2>
+    <ol class="step-list">
+      <li><strong>hypercube_dimension(dataset, kproj)</strong><span>Αν kproj > 0 → χρήση του. Αλλιώς: <code>d' = max(log₂n − rand_offset, 1)</code> με <code>rand_offset ∈ [1,3]</code>.</span></li>
+      <li><strong>initialize_LSH_func(dataset)</strong><span>Δημιουργία d' τυχαίων διανυσμάτων v και μετατοπίσεων t.</span></li>
+      <li><strong>project_to_hypercube(dataset, point)</strong><span>Για κάθε i: <code>dot = v[i]·point</code>, <code>num = floor((dot + t[i]) / w)</code>, <code>bit = num % 2 == 0 ? '0' : '1'</code>. Το αποτέλεσμα είναι string από bits.</span></li>
+      <li><strong>build_index(dataset)</strong><span>Για κάθε point: υπολογισμός vertex, <code>h_map[vertex].push_back(i)</code>.</span></li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">3</span> Query Phase</h2>
+    <ol class="step-list">
+      <li><strong>Project query → vertex</strong><span><code>query_vertex = project_to_hypercube(q)</code>.</span></li>
+      <li><strong>Hamming distance traversal</strong><span>Για <code>hamming_dist = 0..kproj</code>: εξέταση κορυφών με αυτή την απόσταση.</span></li>
+      <li><strong>M / probes limit</strong><span>Σταματάει όταν ελεγχθούν M σημεία ή probes κορυφές.</span></li>
+      <li><strong>Top-N</strong><span>Sort candidates και επιστροφή N πρώτων.</span></li>
+    </ol>
+
+    <h3>vertices_at_hamming_dist</h3>
+    <pre><span class="cm">// Δημιουργία όλων των κορυφών με target_dist διαφορές</span>
+mask = [<span class="kw">true</span> × target_dist, <span class="kw">false</span> × (n - target_dist)]
+<span class="kw">do</span> {
+    new_vertex = vertex
+    <span class="kw">for</span> i: <span class="kw">if</span> mask[i]: flip bit i
+    res.push(new_vertex)
+} <span class="kw">while</span> (prev_permutation(mask))</pre>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">4</span> Μετρικές</h2>
+    <p>Ίδιες με LSH: <strong>AF</strong>, <strong>Recall@N</strong>, <strong>QPS</strong>, <strong>χρόνοι</strong>.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">5</span> Output</h2>
+    <div class="result-box">Hypercube
+
+Query: 0
+Nearest neighbor-1: ...
+...
+FINAL METRICS:
+Total Average AF: ...
+Total Average Recall@N: ...
+QPS: ...
+Average Approximate Time: ...
+Average Exact Time: ...</div>
+    <p><code>sift_output/hypercube_kproj10.dat</code>, <code>hypercube_probes5.dat</code>, <code>hypercube_M100.dat</code></p>
+  </div>
+</section>
+
+<!-- ==================== IVFFLAT ==================== -->
+<section class="page" id="ivfflat">
+  <div class="alg-header ivf">
+    <div class="icon">F</div>
+    <div>
+      <h1>IVFFlat — Inverted File Flat</h1>
+      <p>k-means clustering με ακριβή υπολογισμό αποστάσεων</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">1</span> Input</h2>
+    <table>
+      <thead><tr><th>Παράμετρος</th><th>Περιγραφή</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td><code>-kclusters</code></td><td>Αριθμός clusters (script: 256)</td><td>14</td></tr>
+        <tr><td><code>-nprobe</code></td><td>Αριθμός clusters προς εξέταση</td><td>2</td></tr>
+        <tr><td><code>-N</code></td><td>Αριθμός γειτόνων</td><td>1</td></tr>
+        <tr><td><code>-R</code></td><td>Ακτίνα range search</td><td>2000 / 2.0</td></tr>
+      </tbody>
+    </table>
+    <p style="color:var(--text-muted);"><strong>Dimension:</strong> <code>(type == "mnist") ? 784 : 128</code></p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">2</span> Build Phase</h2>
+    <ol class="step-list">
+      <li><strong>Initialize(dataset_n)</strong><span><code>centroids.resize(kclusters)</code> και <code>cluster_members.resize(kclusters)</code>.</span></li>
+      <li><strong>CreateClusters(dataset)</strong><span>Επιλογή kclusters τυχαίων unique indices ως αρχικά centroids.</span></li>
+      <li><strong>k-means iterations (0..19)</strong><span>Assign: κάθε point στο κοντινότερο centroid. Update: new_centroid = mean των σημείων. Early stopping όταν <code>iteration > 5 && !changed</code>.</span></li>
+      <li><strong>find_nearest_centroid(p)</strong><span>Γραμμική αναζήτηση σε όλα τα centroids με <code>euclidean_distance</code>.</span></li>
+      <li><strong>find_nearest_centroids(p, nprobe)</strong><span>Sort όλων των αποστάσεων, επιστροφή nprobe πρώτων.</span></li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">3</span> Query Phase</h2>
+    <ol class="step-list">
+      <li><strong>find_nearest_centroids(q, nprobe)</strong><span>Βρίσκουμε τα nprobe κοντινότερα centroids.</span></li>
+      <li><strong>Union των cluster_members</strong><span>Συλλογή όλων των σημείων από τα επιλεγμένα clusters σε έναν vector candidates.</span></li>
+      <li><strong>Max-heap top-N</strong><span>Χρήση <code>priority_queue&lt;pair&lt;double,int&gt;&gt;</code>. Αν heap.size() < N → push. Αλλιώς αν dist < top → pop & push.</span></li>
+      <li><strong>Sort & Reverse</strong><span>Μεταφορά σε vector, sqrt, reverse για αύξουσα σειρά.</span></li>
+    </ol>
+
+    <div class="alert success">
+      <strong>최적화:</strong> Το max-heap δίνει <code>O(n log N)</code> αντί για <code>O(n log n)</code> του πλήρους sort.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">4</span> Μετρικές</h2>
+    <p>Ίδιες με LSH, συν το <strong>Silhouette Score</strong> για αξιολόγηση της ποιότητας του clustering.</p>
+
+    <h3>Silhouette Score</h3>
+    <pre><span class="cm">// Sample 100 τυχαία σημεία</span>
+a_i = mean απόσταση από ίδιο cluster
+b_i = min mean απόσταση από άλλα clusters
+silhouette[i] = (b_i - a_i) / max(a_i, b_i)
+<span class="kw">return</span> mean(silhouette)</pre>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">5</span> Output</h2>
+    <div class="result-box">IVFFlat
+
+Query: 0
+Nearest neighbor-1: ...
+...
+FINAL METRICS:
+Total Average AF: ...
+Total Average Recall@N: ...
+QPS: ...
+Average Approximate Time: ...
+Average Exact Time: ...</div>
+    <p><code>sift_output/ivfflat_nprobe5.dat</code>, <code>ivfflat_nprobe10.dat</code>, <code>ivfflat_nprobe20.dat</code></p>
+  </div>
+</section>
+
+<!-- ==================== IVFPQ ==================== -->
+<section class="page" id="ivfpq">
+  <div class="alg-header pq">
+    <div class="icon">P</div>
+    <div>
+      <h1>IVFPQ — Product Quantization</h1>
+      <p>Συμπιεσμένη αναπαράσταση με Look-Up Tables</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">1</span> Input</h2>
+    <table>
+      <thead><tr><th>Παράμετρος</th><th>Περιγραφή</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td><code>-kclusters</code></td><td>Αριθμός IVF clusters</td><td>50</td></tr>
+        <tr><td><code>-nprobe</code></td><td>Αριθμός clusters προς εξέταση</td><td>5</td></tr>
+        <tr><td><code>-M</code></td><td>Αριθμός subspaces (πρέπει <code>dim % M == 0</code>)</td><td>16</td></tr>
+        <tr><td><code>-nbits</code></td><td>Bits ανά subspace</td><td>8</td></tr>
+        <tr><td><code>-N</code></td><td>Αριθμός γειτόνων</td><td>1</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">2</span> Build Phase</h2>
+    <ol class="step-list">
+      <li><strong>IVF Clustering</strong><span><code>k_means(kclusters, 100, 1e-4, 42)</code> → <code>ivf_labels</code>, <code>ivf_centr</code>.</span></li>
+      <li><strong>Inverted Lists</strong><span>Για κάθε point i: <code>inv_list[ivf_labels[i]].push_back(i)</code>.</span></li>
+      <li><strong>Υπολογισμός Residuals</strong><span><code>residual[i] = point[i] - ivf_centr[ivf_labels[i]]</code>.</span></li>
+      <li><strong>PQ Training</strong><span>Για κάθε subspace i: k-means σε 2^nbits clusters → <code>pq_codebook[i]</code>.</span></li>
+      <li><strong>Encoding</strong><span>Για κάθε point: <code>best_code = argmin_c euclidean_distance(sub_vec, codebook[j][c])</code> → <code>pq_code[i][j]</code>.</span></li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">3</span> Query Phase</h2>
+    <ol class="step-list">
+      <li><strong>find_nearest_centr(q, nprobe)</strong><span>Εύρεση nprobe κοντινότερων IVF centroids.</span></li>
+      <li><strong>Για κάθε centroid: build_LUT</strong><span><code>query_residual = q - ivf_centr[c]</code>. Για κάθε subspace: LUT με 2^nbits entries.</span></li>
+      <li><strong>Υπολογισμός απόστασης μέσω LUT</strong><span><code>dist += LUT[i][pq_code[point_id][i]]</code> για i = 0..M-1 — μόνο M προσθέσεις!</span></li>
+      <li><strong>Sort & Top-N</strong><span>Ταξινόμηση και διατήρηση N πρώτων.</span></li>
+    </ol>
+
+    <div class="alert info">
+      <strong>Key insight:</strong> Αντί για M×sub_dim πολλαπλασιασμούς, ο IVFPQ κάνει <strong>M προσθέσεις</strong> — τεράστια επιτάχυνση.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">4</span> Μετρικές</h2>
+    <p>Ίδιες: <strong>AF</strong>, <strong>Recall</strong>, <strong>QPS</strong>, <strong>χρόνοι</strong>.</p>
+    <p style="color:var(--text-muted);">Στο range search χρησιμοποιείται <code>approx_R = R * 1.5</code> για αντιστάθμιση της προσεγγιστικότητας.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">5</span> Output</h2>
+    <div class="result-box">IVFPQ
+Query: 0
+Nearest neighbor-1: ...
+distanceApproximate: ...
+distanceTrue: ...
+R-near neighbors:
+&lt;id1&gt;
+&lt;id2&gt;
+-------------------
+
+FINAL METRICS:
+Total Average AF: ...
+Total Average Recall@N: ...
+QPS: ...
+Average Approximate Time: ...
+Average Exact Time: ...</div>
+    <p><code>sift_output/ivfpq_nprobe5.dat</code>, <code>ivfpq_M8.dat</code>, <code>ivfpq_M16.dat</code></p>
+  </div>
+</section>
+
+<!-- ==================== EXPERIMENTAL STUDY ==================== -->
+<section class="page" id="study">
+  <div class="hero" style="padding-bottom:1.5rem;">
+    <h1>Πειραματική Μελέτη</h1>
+    <p>Συγκριτική ανάλυση των τεσσάρων αλγορίθμων στα datasets MNIST και SIFT</p>
+  </div>
+
+  <!-- METHODOLOGY -->
+  <div class="section">
+    <h2>🔬 Μεθοδολογία</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Datasets</h3>
+        <p><strong>MNIST:</strong> 60.000 train + 10.000 query, 784 διαστάσεις.<br>
+        <strong>SIFT:</strong> 70.000 base + 10.000 query, 128 διαστάσεις.</p>
+      </div>
+      <div class="card">
+        <h3>Μετρικές</h3>
+        <p><strong>Recall@N:</strong> ποσοστό επιτυχούς ανάκτησης.<br>
+        <strong>QPS:</strong> queries per second.<br>
+        <strong>Avg AF:</strong> μέσο κλάσμα προσέγγισης.</p>
+      </div>
+      <div class="card">
+        <h3>Πειράματα</h3>
+        <p>Πολλαπλές εκτελέσεις με διαφορετικές παραμέτρους για κάθε αλγόριθμο — 
+        k, L, w για LSH, kproj/probes/M για Hypercube, nprobe για IVF.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIFT RESULTS -->
+  <div class="section">
+    <h2>📊 Αποτελέσματα — SIFT Dataset</h2>
+
+    <div class="exp-table-wrap">
+      <table class="exp-table">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Recall@N</th>
+            <th>QPS</th>
+            <th>Avg AF</th>
+            <th>Avg Approx Time (s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Hypercube</strong></td><td>0.055</td><td><strong style="color:var(--success)">760.493</strong></td><td>1.236</td><td>1.212</td></tr>
+          <tr><td><strong>IVFFlat</strong></td><td><strong style="color:var(--success)">0.893</strong></td><td>681.626</td><td><strong style="color:var(--success)">0.060</strong></td><td>0.000</td></tr>
+          <tr><td><strong>IVFPQ</strong></td><td>0.711</td><td>190.593</td><td style="color:var(--danger)">2.722</td><td>0.005</td></tr>
+          <tr><td><strong>LSH</strong></td><td>0.084</td><td>678.479</td><td>1.170</td><td>1.877</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Recall@N ανά Αλγόριθμο (SIFT)</h3>
+    <div class="chart">
+      <div class="chart-bar">
+        <span class="value">0.084</span>
+        <div class="bar lsh" style="height:9%"></div>
+        <span class="label">LSH</span>
+      </div>
+      <div class="chart-bar">
+        <span class="value">0.055</span>
+        <div class="bar hyp" style="height:6%"></div>
+        <span class="label">Hypercube</span>
+      </div>
+      <div class="chart-bar">
+        <span class="value">0.893</span>
+        <div class="bar ivf" style="height:89%"></div>
+        <span class="label">IVFFlat</span>
+      </div>
+      <div class="chart-bar">
+        <span class="value">0.711</span>
+        <div class="bar pq" style="height:71%"></div>
+        <span class="label">IVFPQ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MNIST RESULTS -->
+  <div class="section">
+    <h2>📊 Αποτελέσματα — MNIST Dataset</h2>
+
+    <div class="exp-table-wrap">
+      <table class="exp-table">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Recall@N</th>
+            <th>QPS</th>
+            <th>Avg AF</th>
+            <th>Avg Approx Time (s)</th>
+            <th>Avg Exact Time (s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Hypercube</strong></td><td>0.002</td><td>2.43</td><td>1.652</td><td>0.001</td><td>0.424</td></tr>
+          <tr><td><strong>IVFFlat</strong></td><td><strong style="color:var(--success)">0.983</strong></td><td>1.907</td><td><strong style="color:var(--success)">0.510</strong></td><td>0.029</td><td>0.435</td></tr>
+          <tr><td><strong>IVFPQ</strong></td><td>0.475</td><td>1.092</td><td style="color:var(--danger)">2.458</td><td>0.022</td><td>0.988</td></tr>
+          <tr><td><strong>LSH</strong></td><td>0.030</td><td><strong style="color:var(--success)">3.115</strong></td><td>1.537</td><td>0.002</td><td>0.320</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Recall@N ανά Αλγόριθμο (MNIST)</h3>
+    <div class="chart">
+      <div class="chart-bar">
+        <span class="value">0.030</span>
+        <div class="bar lsh" style="height:3%"></div>
+        <span class="label">LSH</span>
+      </div>
+      <div class="chart-bar">
+        <span class="value">0.002</span>
+        <div class="bar hyp" style="height:0.2%"></div>
+        <span class="label">Hypercube</span>
+      </div>
+      <div class="chart-bar">
+        <span class="value">0.983</span>
+        <div class="bar ivf" style="height:98%"></div>
+        <span class="label">IVFFlat</span>
+      </div>
+      <div class="chart-bar">
+        <span class="value">0.475</span>
+        <div class="bar pq" style="height:47%"></div>
+        <span class="label">IVFPQ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRADE-OFF -->
+  <div class="section">
+    <h2>⚖️ Trade-off Ανάλυση</h2>
+
+    <h3>Ακρίβεια vs Ταχύτητα</h3>
+    <ul class="step-list">
+      <li><strong>IVFFlat:</strong><span>Υψηλή ακρίβεια + υψηλή ταχύτητα = <strong style="color:var(--success)">Καλύτερος overall</strong>.</span></li>
+      <li><strong>Hypercube:</strong><span>Χαμηλή ακρίβεια + υψηλή ταχύτητα = Καλός για γρήγορες απαντήσεις.</span></li>
+      <li><strong>IVFPQ:</strong><span>Μέτρια ακρίβεια + χαμηλή ταχύτητα = Δεν συνιστάται.</span></li>
+      <li><strong>LSH:</strong><span>Χαμηλή ακρίβεια + μέτρια ταχύτητα = Περιορισμένη χρήση.</span></li>
+    </ul>
+
+    <div class="alert success">
+      <strong>Βέλτιστη επιλογή overall:</strong> IVFFlat — κερδίζει σε όλες τις κατηγορίες εκτός από απόλυτη ταχύτητα.
+    </div>
+
+    <div class="alert warn">
+      <strong>Προσοχή:</strong> Οι default παράμετροι ίσως δεν είναι βέλτιστες για LSH & Hypercube — 
+      χρειάζεται parameter tuning.
+    </div>
+  </div>
+
+  <!-- CONCLUSIONS -->
+  <div class="section">
+    <h2>🏁 Τελικά Συμπεράσματα</h2>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="value">0.983</span>
+        <span class="name">Best Recall (MNIST)</span>
+      </div>
+      <div class="stat">
+        <span class="value">760</span>
+        <span class="name">Best QPS (SIFT)</span>
+      </div>
+      <div class="stat">
+        <span class="value">0.060</span>
+        <span class="name">Best AF (SIFT)</span>
+      </div>
+      <div class="stat">
+        <span class="value">IVFFlat</span>
+        <span class="name">Best Overall</span>
+      </div>
+    </div>
+
+    <h3>Ανά περίπτωση χρήσης</h3>
+    <div class="grid">
+      <div class="card">
+        <h3>🎯 Για Υψηλή Ακρίβεια</h3>
+        <p><strong>IVFFlat</strong> — σχεδόν τέλειος recall (0.98 MNIST, 0.89 SIFT) με καλή ταχύτητα.</p>
+      </div>
+      <div class="card">
+        <h3>⚡ Για Μέγιστη Ταχύτητα</h3>
+        <p><strong>Hypercube</strong> — 760 QPS στο SIFT, αλλά με θυσία ακρίβειας.</p>
+      </div>
+      <div class="card">
+        <h3>⚖️ Για Ισορροπία</h3>
+        <p><strong>LSH</strong> — ικανοποιητική ταχύτητα και AF, αλλά χαμηλή ακρίβεια.</p>
+      </div>
+      <div class="card">
+        <h3>❌ Δεν Συνιστάται</h3>
+        <p><strong>IVFPQ</strong> — χαμηλή ταχύτητα + χαμηλή ακρίβεια + υψηλό AF.</p>
+      </div>
+    </div>
+
+    <h3>Παρατηρήσεις</h3>
+    <ol class="step-list">
+      <li><strong>Το SIFT φαίνεται καλύτερα βελτιστοποιημένο</strong><span>Πολύ υψηλότερα QPS από το MNIST.</span></li>
+      <li><strong>Οι default παράμετροι δεν είναι βέλτιστες</strong><span>Χρειάζεται tuning για LSH & Hypercube.</span></li>
+      <li><strong>Χρειάζεται brute force σύγκριση</strong><span>Για απόλυτα αξιόπιστα συμπεράσματα.</span></li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Εργασία · Ανάπτυξη Λογισμικού για Αλγοριθμικά Προβλήματα · ΕΚΠΑ<br>
+  <span style="opacity:0.6;">© 2025 — Παπαθανασίου Ελένη · Τόντου Αλτάνη-Δάφνη</span>
+</footer>
+
+<script>
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  
+  const target = document.getElementById(page);
+  if (target) target.classList.add('active');
+  
+  const link = document.querySelector(`.nav-links a[data-page="${page}"]`);
+  if (link) link.classList.add('active');
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  history.replaceState(null, '', '#' + page);
+}
+
+// Αρχική φόρτωση: έλεγχος hash
+window.addEventListener('load', () => {
+  const hash = window.location.hash.slice(1) || 'home';
+  go(hash);
+});
+
+// Υποστήριξη browser back/forward
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.slice(1) || 'home';
+  go(hash);
+});
+</script>
+</body>
+</html>
